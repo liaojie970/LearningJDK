@@ -29,7 +29,8 @@ package java.lang;
  * Subclasses of {@code LinkageError} indicate that a class has
  * some dependency on another class; however, the latter class has
  * incompatibly changed after the compilation of the former class.
- *
+ * {@code LinkageError}的继承类显示一个类依赖另外类；然而，后面的类与编译的类
+ * 发生了不兼容的更改
  *
  * @author  Frank Yellin
  * @since   1.0

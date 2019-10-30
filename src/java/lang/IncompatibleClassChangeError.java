@@ -29,7 +29,8 @@ package java.lang;
  * Thrown when an incompatible class change has occurred to some class
  * definition. The definition of some class, on which the currently
  * executing method depends, has since changed.
- *
+ * 当某些类发生改变，与定义的不兼容时，抛出该错误；
+ * 某些类中的执行的方法依赖于类型改变之前的
  * @author  unascribed
  * @since   1.0
  */
@@ -40,6 +41,7 @@ class IncompatibleClassChangeError extends LinkageError {
     /**
      * Constructs an <code>IncompatibleClassChangeError</code> with no
      * detail message.
+     * 无详细消息的构造函数
      */
     public IncompatibleClassChangeError () {
         super();
@@ -48,7 +50,7 @@ class IncompatibleClassChangeError extends LinkageError {
     /**
      * Constructs an <code>IncompatibleClassChangeError</code> with the
      * specified detail message.
-     *
+     * 带详细信息的构造函数
      * @param   s   the detail message.
      */
     public IncompatibleClassChangeError(String s) {

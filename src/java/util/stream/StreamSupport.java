@@ -131,7 +131,7 @@ public final class StreamSupport {
      * @param spliterator a {@code Spliterator.OfInt} describing the stream elements
      * @param parallel    if {@code true} then the returned stream is a parallel
      *                    stream; if {@code false} the returned stream is a sequential
-     *                    stream.
+     *                    stream.如果true,返回并行stream;如果是false，返回顺序stream
      *
      * @return a new sequential or parallel {@code IntStream}
      */

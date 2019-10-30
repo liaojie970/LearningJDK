@@ -40,7 +40,9 @@ package java.lang;
  *
  * That is, {@code Error} and its subclasses are regarded as unchecked
  * exceptions for the purposes of compile-time checking of exceptions.
- *
+ * {@code Error}继承{@code Throwable},表示发生了应用无法捕获的问题；大部分的错误是异常的。
+ * {@code ThreadDeath} error,尽管线程死亡是“正常”情况，但它也是 {@code Error}的继承类，因为
+ * 大部分应用不需要去捕获他
  * @author  Frank Yellin
  * @see     java.lang.ThreadDeath
  * @jls 11.2 Compile-Time Checking of Exceptions
@@ -53,6 +55,7 @@ public class Error extends Throwable {
      * Constructs a new error with {@code null} as its detail message.
      * The cause is not initialized, and may subsequently be initialized by a
      * call to {@link #initCause}.
+     * 构造一个带有{@code null}详细信息的error; case不初始化，可能会在随后的调用{@link #initCause}
      */
     public Error() {
         super();

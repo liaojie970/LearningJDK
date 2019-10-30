@@ -31,6 +31,8 @@ package java.lang;
  * only occur at run time if the definition of some class has
  * incompatibly changed since the currently executing method was last
  * compiled.
+ * 方法错误抽象类：当一个应用尝试调用抽象方法时抛出它；通常，该错误由编译器捕获；
+ * 如果某个类自上一次编译，发生了不兼容的修改，在运行时就会发生该错误
  *
  * @author  unascribed
  * @since   1.0
@@ -41,6 +43,7 @@ class AbstractMethodError extends IncompatibleClassChangeError {
 
     /**
      * Constructs an <code>AbstractMethodError</code> with no detail  message.
+     * 没有详细信息的构造函数
      */
     public AbstractMethodError() {
         super();
@@ -49,7 +52,7 @@ class AbstractMethodError extends IncompatibleClassChangeError {
     /**
      * Constructs an <code>AbstractMethodError</code> with the specified
      * detail message.
-     *
+     * 可传递详细信息的构造函数
      * @param   s   the detail message.
      */
     public AbstractMethodError(String s) {

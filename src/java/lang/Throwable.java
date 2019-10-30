@@ -35,17 +35,21 @@ import  java.util.*;
  * can be thrown by the Java {@code throw} statement. Similarly, only
  * this class or one of its subclasses can be the argument type in a
  * {@code catch} clause.
- *
+ * Java语言的所有errors和exceptions的超级父类；该类及子类的示例会被JVM或{@code throw}
+ * 语法抛出；同理，{@code catch}语法中也是以此类作为参数
  * For the purposes of compile-time checking of exceptions, {@code
  * Throwable} and any subclass of {@code Throwable} that is not also a
  * subclass of either {@link RuntimeException} or {@link Error} are
  * regarded as checked exceptions.
- *
+ * 出于编译时检查异常的目的，{@code Throwable} 和其子类被视为检查异常，
+ * 除了{@link RuntimeException}及其子类
  * <p>Instances of two subclasses, {@link java.lang.Error} and
  * {@link java.lang.Exception}, are conventionally used to indicate
  * that exceptional situations have occurred. Typically, these instances
  * are freshly created in the context of the exceptional situation so
  * as to include relevant information (such as stack trace data).
+ * {@link Error} 和 {@link Exception}通常被用来表示出现异常情况；这些异常实例在发生
+ * 异常的上下文就近创建，并包含相关信息，比如堆栈数据
  *
  * <p>A throwable contains a snapshot of the execution stack of its
  * thread at the time it was created. It can also contain a message
@@ -57,6 +61,9 @@ import  java.util.*;
  * is referred to as the <i>chained exception</i> facility, as the
  * cause can, itself, have a cause, and so on, leading to a "chain" of
  * exceptions, each caused by another.
+ * Throwable包含了在它被创建时所在线程的快照。也可以包含提供更多消息字符串来描述该错误；
+ * 慢慢的，一个throwable会被另一个throwable抑制{@linkplain Throwable#addSuppressed(Throwable)}
+ * 最后，这个Throwable能够包含一个case：
  *
  * <p>One reason that a throwable may have a cause is that the class that
  * throws it is built atop a lower layered abstraction, and an operation on

@@ -870,6 +870,7 @@ public final class Spliterators {
         
         /**
          * Creates a spliterator covering the given array and range
+         * 创建覆盖给定数组和范围的拆分器
          *
          * @param array                     the array, assumed to be unmodified during use
          * @param origin                    the least index (inclusive) to cover
@@ -2244,7 +2245,7 @@ public final class Spliterators {
     /**
      * Validate inclusive start index and exclusive end index against the length
      * of an array.
-     *
+     * 根据数组长度验证开始索引和结束索引
      * @param arrayLength The length of the array
      * @param origin      The inclusive start index
      * @param fence       The exclusive end index
