@@ -25,6 +25,8 @@
 
 package java.util;
 
+import jdk.internal.misc.SharedSecrets;
+
 import java.io.IOException;
 import java.io.InvalidObjectException;
 import java.io.Serializable;
@@ -34,7 +36,6 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import jdk.internal.misc.SharedSecrets;
 
 /**
  * Hash table based implementation of the {@code Map} interface.  This
@@ -374,6 +375,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
 
     /**
      * Returns a power of two size for the given target capacity.
+     * 返回大于等于给定参数的就近 2的N次方
      */
     static final int tableSizeFor(int cap) {
         int n = -1 >>> Integer.numberOfLeadingZeros(cap - 1);
@@ -595,7 +597,8 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * Associates the specified value with the specified key in this map.
      * If the map previously contained a mapping for the key, the old
      * value is replaced.
-     *
+     * 在Map中将指定的值与键相关联
+     * 如果该Map之前已经包含了该键的映射,那么旧的值会被替换
      * @param key key with which the specified value is to be associated
      * @param value value to be associated with the specified key
      * @return the previous value associated with {@code key}, or
@@ -609,55 +612,70 @@ public class HashMap<K,V> extends AbstractMap<K,V>
 
     /**
      * Implements Map.put and related methods.
-     *
-     * @param hash hash for key
-     * @param key the key
-     * @param value the value to put
-     * @param onlyIfAbsent if true, don't change existing value
-     * @param evict if false, the table is in creation mode.
+     * Map.put的实现和相关方法
+     * @param hash hash for key Key的hash值
+     * @param key the key   键
+     * @param value the value to put 值
+     * @param onlyIfAbsent if true, don't change existing value 如果传递的为true,不改变当前值
+     * @param evict if false, the table is in creation mode. 如果传递false,表处于创建模式
      * @return previous value, or null if none
      */
     final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
                    boolean evict) {
-        Node<K,V>[] tab; Node<K,V> p; int n, i;
+        Node<K,V>[] tab; Node<K,V> p; int n, i;//定义元素数组和当前元素变量
+        //判断当前Map的元素数组长度为空或为0
+        // tab = resize() 初始化了元素数组，同时也可以实现数组扩容，可参见：resize方法解析
         if ((tab = table) == null || (n = tab.length) == 0)
+            //如果是才新建的无参数Map,那么就初始化一个16长度的Node类型数组,并16赋值给n
             n = (tab = resize()).length;
+        //根据hash值和数组长度做“&”元素计算数组下标，并赋值给p;例如：n=16的话,16&<hash>得到tab[?]
         if ((p = tab[i = (n - 1) & hash]) == null)
+            //如果该位置不存在元素，那么那就创建一个新的元素存储到这个位置
             tab[i] = newNode(hash, key, value, null);
-        else {
+        else {//如果该位置存在元素
             Node<K,V> e; K k;
+            //如果要写入的key的hash值与当前元素的hash相等，并且key也相同
             if (p.hash == hash &&
                 ((k = p.key) == key || (key != null && key.equals(k))))
-                e = p;
+                e = p;//用e来存储当前元素
+
+            // 由上面的if判断后，到这里就是判断要写入的key的hash值和当前元素的key的hash值不同，或者key不相等，
+            // 说明不是同一个key，要通过其他数据结构来存储新来的数据
             else if (p instanceof TreeNode)
-                e = ((TreeNode<K,V>)p).putTreeVal(this, tab, hash, key, value);
-            else {
-                for (int binCount = 0; ; ++binCount) {
-                    if ((e = p.next) == null) {
+                e = ((TreeNode<K,V>)p).putTreeVal(this, tab, hash, key, value);// 参见：putTreeVal方法解析
+            else {//运行到这里说明采用链表结构来存储
+                for (int binCount = 0; ; ++binCount) {// 要逐一对比看要写入的key是否和链表上的某个key相同
+                    if ((e = p.next) == null) {// 如果当前元素没有下一个节点
+                        // 根据键值对创建一个新节点，挂到链表的尾部
                         p.next = newNode(hash, key, value, null);
+                        //  判断链表上元素的个数已经达到了阀值
                         if (binCount >= TREEIFY_THRESHOLD - 1) // -1 for 1st
+                            // 将该链表上所有元素改为TreeNode方式存储（是为了增加查询性能，元素越多，链表的查询性能越差） 或者 扩容
                             treeifyBin(tab, hash);
-                        break;
+                        break;// 跳出循环，因为没有可遍历的元素了
                     }
+                    // 如果下一个节点的 hash值和key值都和要写入的hash 和 key相同
                     if (e.hash == hash &&
                         ((k = e.key) == key || (key != null && key.equals(k))))
-                        break;
+                        break;// 跳出循环，因为找到了相同的key对应的元素
                     p = e;
                 }
             }
             if (e != null) { // existing mapping for key
+                // e不为空，说明找了和要写入的key对应的元素，根据情况来决定是否覆盖值
                 V oldValue = e.value;
-                if (!onlyIfAbsent || oldValue == null)
+                if (!onlyIfAbsent || oldValue == null)// 如果旧值为空  后者  指定了需要覆盖旧值，那么更改元素的值为新值
                     e.value = value;
-                afterNodeAccess(e);
-                return oldValue;
+                afterNodeAccess(e);// 元素被访问之后的后置处理， LinkedHashMap中有具体实现
+                return oldValue;// 返回旧值
             }
         }
+        // 执行到这里，说明是增加了新的元素，而不是替换了老的元素，所以相关计数需要累加
         ++modCount;
-        if (++size > threshold)
-            resize();
-        afterNodeInsertion(evict);
-        return null;
+        if (++size > threshold)// 递增当前Map的元素个数,然后判断当前map的元素个数是否大于扩容阀值，如果大于就需要扩容元素数组了
+            resize();//Map数组扩容
+        afterNodeInsertion(evict);// 添加新元素之后的后后置处理， LinkedHashMap中有具体实现
+        return null;// 返回空
     }
 
     /**
@@ -666,61 +684,107 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * Otherwise, because we are using power-of-two expansion, the
      * elements from each bin must either stay at same index, or move
      * with a power of two offset in the new table.
-     *
+     * resize方法的作用：在向HashMap里put元素的时候，HashMap基于扩容规则发现需要扩容的时候会调用该方法来进行扩容。
      * @return the table
      */
     final Node<K,V>[] resize() {
-        Node<K,V>[] oldTab = table;
-        int oldCap = (oldTab == null) ? 0 : oldTab.length;
-        int oldThr = threshold;
-        int newCap, newThr = 0;
-        if (oldCap > 0) {
-            if (oldCap >= MAXIMUM_CAPACITY) {
+        Node<K,V>[] oldTab = table;//当前所有元素所在的数组，称为老的元素数组
+        int oldCap = (oldTab == null) ? 0 : oldTab.length;//设置老的元素数组的长度
+        int oldThr = threshold;//设置老的扩容阈值
+        int newCap, newThr = 0; // 新数组的容量，新数组的扩容阀值都初始化为0
+        if (oldCap > 0) { // 如果老数组长度大于0，说明已经存在元素
+            //PS1
+            if (oldCap >= MAXIMUM_CAPACITY) {// 如果数组元素个数大于等于限定的最大容量（2的30次方）
+                // 扩容阀值设置为int最大值（2的31次方 -1 ），因为oldCap再乘2就溢出了
                 threshold = Integer.MAX_VALUE;
-                return oldTab;
+                return oldTab;//返回老的元素容量
             }
+            /*
+            * 如果数组元素个数在正常范围内，那么新的数组容量为老的数组容量的2倍（左移1位相当于乘以2）
+            * 如果扩容之后的新容量小于最大容量  并且  老的数组容量大于等于默认初始化容量（16），
+            * 那么新数组的扩容阀值设置为老阀值的2倍。（老的数组容量大于16意味着：
+            * 要么构造函数指定了一个大于16的初始化容量值，要么已经经历过了至少一次扩容）
+            */
             else if ((newCap = oldCap << 1) < MAXIMUM_CAPACITY &&
                      oldCap >= DEFAULT_INITIAL_CAPACITY)
                 newThr = oldThr << 1; // double threshold
         }
+        // PS2
+        // 运行到这个else if  说明老数组没有任何元素
+        // 如果老数组的扩容阀值大于0，那么设置新数组的容量为该阀值
+        // 这一步也就意味着构造该map的时候，指定了初始化容量
         else if (oldThr > 0) // initial capacity was placed in threshold
             newCap = oldThr;
         else {               // zero initial threshold signifies using defaults
-            newCap = DEFAULT_INITIAL_CAPACITY;
+            // 能运行到这里的话，说明是调用无参构造函数创建的该map，并且第一次添加元素
+            newCap = DEFAULT_INITIAL_CAPACITY; //设置新数组容量为16
+            // 设置新数组扩容阀值为 0.75*16 = 12; 0.75为负载因子（当元素个数达到容量了4分之3，那么扩容）
             newThr = (int)(DEFAULT_LOAD_FACTOR * DEFAULT_INITIAL_CAPACITY);
         }
+
+        // 如果新的扩容阈值为0 (PS2的情况)
         if (newThr == 0) {
-            float ft = (float)newCap * loadFactor;
+            float ft = (float)newCap * loadFactor;//在无参和int单参数构造函数中,loadFactor=0.75
             newThr = (newCap < MAXIMUM_CAPACITY && ft < (float)MAXIMUM_CAPACITY ?
                       (int)ft : Integer.MAX_VALUE);
         }
-        threshold = newThr;
+        threshold = newThr;//设置Map的扩容阈值为新的阈值
         @SuppressWarnings({"rawtypes","unchecked"})
+        // 创建新的数组（对于第一次添加元素，那么这个数组就是第一个数组；
+                // 对于存在oldTab的时候，那么这个数组就是要需要扩容到的新数组）
         Node<K,V>[] newTab = (Node<K,V>[])new Node[newCap];
-        table = newTab;
-        if (oldTab != null) {
-            for (int j = 0; j < oldCap; ++j) {
+        table = newTab;// 将该map的table属性指向到该新数组
+        if (oldTab != null) {// 如果老数组不为空，说明是扩容操作，那么涉及到元素的转移操作
+            for (int j = 0; j < oldCap; ++j) {// 遍历老数组
                 Node<K,V> e;
-                if ((e = oldTab[j]) != null) {
-                    oldTab[j] = null;
-                    if (e.next == null)
+                if ((e = oldTab[j]) != null) {// 如果当前位置元素不为空，那么需要转移该元素到新数组
+                    oldTab[j] = null;// 释放掉老数组对于要转移走的元素的引用(主要为了使得数组可被回收)
+                    if (e.next == null)// 如果元素没有有下一个节点，说明该元素不存在hash冲突
+                    /* PS3
+                     把元素存储到新的数组中，存储到数组的哪个位置需要根据hash值和数组长度来进行取模
+                     【hash值 % 数组长度】=【hash值 &（数组长度-1）】
+                     这种"&"运算求模的方式要求  数组长度必须是2的N次方，
+                     但是可以通过构造函数随意指定初始化容量呀，如果指定了17,15这种，岂不是出问题了？
+                     没关系，最终会通过tableSizeFor方法将用户指定的转化为大于其并且最相近的2的N次方。 15 -> 16、17-> 32
+                     */
                         newTab[e.hash & (newCap - 1)] = e;
-                    else if (e instanceof TreeNode)
-                        ((TreeNode<K,V>)e).split(this, newTab, j, oldCap);
+
+                    /*如果该元素有下一个节点，那么说明该位置上存在一个链表了(hash相同的多个元素以链表的方式存储到了老数组的这个位置上了)
+                      例如：数组长度为16，那么hash值为1（1%16=1）的和hash值为17（17%16=1）的两个元素都是会存储在数组的第2个位置上
+                      (对应数组下标为1)，当数组扩容为32（1%32=1）时，hash值为1的还应该存储在新数组的第二个位置上，
+                      但是hash值为17（17%32=17）的就应该存储在新数组的第18个位置上了。
+                      所以，数组扩容后，所有元素都需要重新计算在新数组中的位置。
+                    */
+
+                    else if (e instanceof TreeNode)//如果该节点为 TreeNode类型
+                        ((TreeNode<K,V>)e).split(this, newTab, j, oldCap);// 待定单独讨论
                     else { // preserve order
-                        Node<K,V> loHead = null, loTail = null;
-                        Node<K,V> hiHead = null, hiTail = null;
+                        Node<K,V> loHead = null, loTail = null; // 按命名来翻译的话，应该叫低位首 尾节点
+                        Node<K,V> hiHead = null, hiTail = null; // 按命名来翻译的话，应该叫高位首 尾节点
+                        // 以上的低位指的是新数组的 0  到 oldCap-1 、高位指定的是oldCap 到 newCap - 1
                         Node<K,V> next;
+                        //遍历链表
                         do {
                             next = e.next;
+                            // 这一步判断好狠，拿元素的hash值  和  老数组的长度  做与运算
+                            // PS3里曾说到，数组的长度一定是2的N次方（例如16），如果hash值和该长度做与运算，
+                            // 那么该hash值可参与计算的有效二进制位就是和长度二进制对等的后几位，如果结果为0，
+                            // 说明hash值中参与计算的对等的二进制位的最高位一定为0.
+                            //  因为数组长度的二进制有效最高位是1（例如16对应的二进制是10000），只有*..0**** 和 10000 进行与运算结果才为00000（*..表示不确定的多个二进制位）。
+                            // 又因为定位下标时的取模运算是以hash值和长度减1进行与运算，所以下标 = (*..0**** & 1111) 也= (*..0**** & 11111) 。1111是15的二进制、11111是16*2-1 也就是31的二级制（2倍扩容）。
+                            // 所以该hash值再和新数组的长度取摸的话mod值也不会放生变化，也就是说该元素的在新数组的位置和在老数组的位置是相同的，所以该元素可以放置在低位链表中
                             if ((e.hash & oldCap) == 0) {
-                                if (loTail == null)
-                                    loHead = e;
+                                //PS4
+                                if (loTail == null)//如果没有尾，说明链表为空
+                                    loHead = e;//链表为空时，链表头结点指向该元素
                                 else
-                                    loTail.next = e;
-                                loTail = e;
+                                    loTail.next = e;//如果链表不为空，就把该元素挂载到链表的尾部节点上
+                                loTail = e;//然后把尾部节点指向新挂载的元素上
                             }
-                            else {
+                            // 如果与运算结果不为0，说明hash值大于老数组长度（例如hash值为17）
+                            // 此时该元素应该放置到新数组的高位位置上
+                            // 例：老数组长度16，那么新数组长度为32，hash为17的应该放置在数组的第17个位置上，也就是下标为16，那么下标为16已经属于高位了，低位是[0-15]，高位是[16-31]
+                            else {//这个括号内的逻辑同PS4
                                 if (hiTail == null)
                                     hiHead = e;
                                 else
@@ -728,43 +792,58 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                                 hiTail = e;
                             }
                         } while ((e = next) != null);
-                        if (loTail != null) {
+                        if (loTail != null) {//低位元素组成的链表还是放在数组的原来位置
                             loTail.next = null;
                             newTab[j] = loHead;
                         }
-                        if (hiTail != null) {
+                        if (hiTail != null) {//高位的元素组成的链表放置的位置在原来位置的基础上偏移老数组长度
                             hiTail.next = null;
-                            newTab[j + oldCap] = hiHead;
+                            newTab[j + oldCap] = hiHead;// 例：hash为 17 在老数组放置在0下标，在新数组放置在16下标；    hash为 18 在老数组放置在1下标，在新数组放置在17下标；
                         }
                     }
                 }
             }
         }
-        return newTab;
+        return newTab;//返回新的数组
     }
 
     /**
      * Replaces all linked nodes in bin at index for given hash unless
      * table is too small, in which case resizes instead.
+     * 将链表中的元素变成红黑树结构
+     * @param tab 元素数组
+     * @param hash key的hash值
      */
     final void treeifyBin(Node<K,V>[] tab, int hash) {
         int n, index; Node<K,V> e;
+        /*
+         * 如果元素数组为空 或者 数组长度小于 树结构化的最小限制64
+         * MIN_TREEIFY_CAPACITY 默认值64，对于这个值可以理解为：如果元素数组长度小于这个值，没有必要去进行结构转换
+         * 当一个数组位置上集中了多个键值对，那是因为这些key的hash值和数组长度取模之后结果相同。（并不是因为这些key的hash值相同）
+         * 因为hash值相同的概率不高，所以可以通过扩容的方式，来使得最终这些key的hash值在和新的数组长度取模之后，拆分到多个数组位置上。
+         */
         if (tab == null || (n = tab.length) < MIN_TREEIFY_CAPACITY)
-            resize();
+            resize();// 扩容，可参见resize方法解析
+
+        // 如果元素数组长度已经大于等于了 MIN_TREEIFY_CAPACITY，那么就有必要进行结构转换了
+        // 根据hash值和数组长度进行取模运算后，得到链表的首节点
         else if ((e = tab[index = (n - 1) & hash]) != null) {
-            TreeNode<K,V> hd = null, tl = null;
+            TreeNode<K,V> hd = null, tl = null;// 定义链表的首、尾节点
             do {
-                TreeNode<K,V> p = replacementTreeNode(e, null);
-                if (tl == null)
-                    hd = p;
-                else {
-                    p.prev = tl;
-                    tl.next = p;
+                TreeNode<K,V> p = replacementTreeNode(e, null);// 将该节点转换为 树节点
+                if (tl == null)// 如果尾节点为空，说明还没有根节点
+                    hd = p;// 首节点（根节点）指向 当前节点
+                else {// 尾节点不为空，以下两行是一个双向链表结构
+                    p.prev = tl;// 当前树节点的 前一个节点指向 尾节点
+                    tl.next = p;// 尾节点的 后一个节点指向 当前节点
                 }
-                tl = p;
-            } while ((e = e.next) != null);
+                tl = p;// 把当前节点设为尾节点
+            } while ((e = e.next) != null);// 继续遍历链表
+            // 到目前为止 也只是把Node对象转换成了TreeNode对象，把单向链表转换成了双向链表
+
+            // 把转换后的双向链表，替换原来位置上的单向链表
             if ((tab[index] = hd) != null)
-                hd.treeify(tab);
+                hd.treeify(tab);// 查看treeify解析
         }
     }
 
@@ -1792,7 +1871,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * classes, and HashSet.
      */
 
-    // Create a regular (non-tree) node
+    // Create a regular (non-tree) node 创建一个普通的、非树型的节点
     Node<K,V> newNode(int hash, K key, V value, Node<K,V> next) {
         return new Node<>(hash, key, value, next);
     }
